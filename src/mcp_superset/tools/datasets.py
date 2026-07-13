@@ -95,6 +95,7 @@ def register_dataset_tools(mcp):
         columns: str | None = None,
         metrics: str | None = None,
         confirm_columns_replace: bool = False,
+        always_filter_main_dttm: bool | None = None,
     ) -> str:
         """Update a dataset. Only pass the fields you want to change.
 
@@ -111,6 +112,11 @@ def register_dataset_tools(mcp):
             metrics: JSON string describing metrics. Format:
                 [{"metric_name": "count", "expression": "COUNT(*)", "metric_type": "count"}]
             confirm_columns_replace: Confirmation for replacing ALL columns (REQUIRED when passing columns).
+            always_filter_main_dttm: Force the dataset's main datetime filter on/off.
+                Superset resets this flag to false on any PUT that omits it, which
+                breaks dashboard time filters when only columns/metrics are updated.
+                Pass an explicit value to set it; leave it None and the current
+                value is preserved automatically whenever columns are replaced.
 
         Returns:
             JSON string with the updated dataset details.
@@ -149,6 +155,18 @@ def register_dataset_tools(mcp):
             if err:
                 return json.dumps({"error": err}, ensure_ascii=False)
             payload["metrics"] = parsed
+        # Superset PUT /dataset/{id} resets always_filter_main_dttm to false when
+        # the field is omitted from the payload. Replacing columns without it then
+        # silently breaks the time filters on dependent dashboards. Use the explicit
+        # value when provided; otherwise, when columns are replaced, read and
+        # preserve the current value so the flag is not clobbered.
+        if always_filter_main_dttm is not None:
+            payload["always_filter_main_dttm"] = always_filter_main_dttm
+        elif columns is not None:
+            current = await client.get(f"/api/v1/dataset/{dataset_id}")
+            cur_val = (current.get("result") or {}).get("always_filter_main_dttm")
+            if cur_val is not None:
+                payload["always_filter_main_dttm"] = cur_val
         result = await client.put(f"/api/v1/dataset/{dataset_id}", json_data=payload)
         return json.dumps(result, ensure_ascii=False)
 

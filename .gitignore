@@ -39,3 +39,7 @@ coverage.xml
 data/
 PROMOTION.md
 PROMOTION.md
+
+# Local MCP server run logs
+server.out.log
+server.err.log
