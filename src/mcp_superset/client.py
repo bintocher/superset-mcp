@@ -23,7 +23,7 @@ class SupersetClient:
         )
 
     async def _get_headers(self, need_csrf: bool = False) -> dict[str, str]:
-        """Build request headers with a valid JWT and optionally a CSRF token.
+        """Build request headers with auth and optionally a CSRF token.
 
         Args:
             need_csrf: True for mutating requests (POST/PUT/DELETE).
@@ -31,13 +31,12 @@ class SupersetClient:
         Returns:
             Dictionary of HTTP headers.
         """
-        token = await self.auth.get_token(self._client)
         headers = {
-            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "Referer": self.base_url,
         }
+        await self.auth.apply_auth(self._client, headers)
         if need_csrf:
             csrf = await self.auth.get_csrf_token(self._client)
             headers["X-CSRFToken"] = csrf
@@ -112,6 +111,8 @@ class SupersetClient:
                 error_detail = error_body.get("message", "") or error_body.get("errors", str(error_body))
             except Exception:
                 error_detail = resp.text[:500]
+            if resp.status_code == 401 and self.auth.auth_failure_hint:
+                error_detail = f"{error_detail} — {self.auth.auth_failure_hint}".lstrip(" —")
             raise SupersetAPIError(
                 status_code=resp.status_code,
                 detail=f"Superset API {method} {endpoint}: {resp.status_code} — {error_detail}",
@@ -231,13 +232,10 @@ class SupersetClient:
             SupersetAPIError: If the API returns a 4xx/5xx status code.
         """
         url = f"{self.base_url}{endpoint}"
-        token = await self.auth.get_token(self._client)
+        headers = {"Referer": self.base_url}
+        await self.auth.apply_auth(self._client, headers)
         csrf = await self.auth.get_csrf_token(self._client)
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "X-CSRFToken": csrf,
-            "Referer": self.base_url,
-        }
+        headers["X-CSRFToken"] = csrf
         resp = await self._client.post(
             url=url,
             headers=headers,
@@ -246,10 +244,8 @@ class SupersetClient:
         )
         if resp.status_code == 401:
             self.auth.invalidate()
-            token = await self.auth.get_token(self._client)
-            csrf = await self.auth.get_csrf_token(self._client)
-            headers["Authorization"] = f"Bearer {token}"
-            headers["X-CSRFToken"] = csrf
+            await self.auth.apply_auth(self._client, headers)
+            headers["X-CSRFToken"] = await self.auth.get_csrf_token(self._client)
             resp = await self._client.post(
                 url=url,
                 headers=headers,
