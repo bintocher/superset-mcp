@@ -185,3 +185,60 @@ class JwtAuthManager:
         re-login.
         """
         self._csrf_token = None
+
+
+class CookieAuthManager:
+    """Authenticates with Superset using a static session cookie (SSO).
+
+    Sends the browser session cookie on every request and fetches CSRF
+    tokens authenticated by that cookie. The session cannot be renewed
+    server-side — when it expires the operator must supply a fresh cookie.
+    """
+
+    def __init__(self, base_url: str, cookie_value: str, cookie_name: str = "session"):
+        self.base_url = base_url.rstrip("/")
+        self.cookie_value = cookie_value
+        self.cookie_name = cookie_name
+        self._csrf_token: str | None = None
+
+    @property
+    def auth_failure_hint(self) -> str | None:
+        """Explain the likely cause of a 401 in cookie mode."""
+        return "Session cookie rejected or expired — refresh SUPERSET_SESSION_COOKIE from your browser."
+
+    def _cookie_header(self) -> str:
+        return f"{self.cookie_name}={self.cookie_value}"
+
+    async def apply_auth(self, client: httpx.AsyncClient, headers: dict[str, str]) -> None:
+        """Set the Cookie header with the session cookie.
+
+        Args:
+            client: httpx async client (unused; kept for interface parity).
+            headers: Mutable header dict to inject the cookie into.
+        """
+        headers["Cookie"] = self._cookie_header()
+
+    async def get_csrf_token(self, client: httpx.AsyncClient) -> str:
+        """Return a valid CSRF token, fetching one via the cookie if needed.
+
+        Args:
+            client: httpx async client used for HTTP requests.
+
+        Returns:
+            A CSRF token string.
+        """
+        if self._csrf_token:
+            return self._csrf_token
+        url = f"{self.base_url}/api/v1/security/csrf_token/"
+        headers = {"Cookie": self._cookie_header(), "Referer": self.base_url}
+        resp = await client.get(url, headers=headers)
+        resp.raise_for_status()
+        self._csrf_token = resp.json()["result"]
+        return self._csrf_token
+
+    def invalidate(self) -> None:
+        """No-op: an expired SSO session cannot be renewed server-side."""
+
+    def invalidate_csrf(self) -> None:
+        """Reset only the cached CSRF token."""
+        self._csrf_token = None
