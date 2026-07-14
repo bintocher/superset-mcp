@@ -259,6 +259,8 @@ class SupersetClient:
                 error_detail = error_body.get("message", "") or error_body.get("errors", str(error_body))
             except Exception:
                 error_detail = resp.text[:500]
+            if resp.status_code == 401 and self.auth.auth_failure_hint:
+                error_detail = f"{error_detail} — {self.auth.auth_failure_hint}".lstrip(" —")
             raise SupersetAPIError(
                 status_code=resp.status_code,
                 detail=f"Superset API POST {endpoint}: {resp.status_code} — {error_detail}",

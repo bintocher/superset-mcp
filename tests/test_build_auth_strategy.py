@@ -18,8 +18,11 @@ def test_selects_cookie_when_cookie_set():
 
 
 def test_selects_jwt_when_credentials_set():
-    strategy = build_auth_strategy(BASE, None, "session", "admin", "pw", "db")
+    strategy = build_auth_strategy(BASE, None, "session", "admin", "pw", "ldap")
     assert isinstance(strategy, JwtAuthManager)
+    assert strategy.username == "admin"
+    assert strategy.password == "pw"
+    assert strategy.provider == "ldap"
 
 
 def test_cookie_takes_precedence_over_credentials():
