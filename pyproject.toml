@@ -42,6 +42,9 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "twine>=6.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
 ]
 
 [project.urls]
@@ -66,3 +69,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

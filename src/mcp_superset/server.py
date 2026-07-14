@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from mcp_superset import __version__
-from mcp_superset.auth import AuthManager
+from mcp_superset.auth import JwtAuthManager
 from mcp_superset.client import SupersetClient
 from mcp_superset.tools import register_all_tools
 
@@ -33,7 +33,7 @@ if not SUPERSET_USERNAME or not SUPERSET_PASSWORD:
     raise ValueError("SUPERSET_USERNAME and SUPERSET_PASSWORD are required. Set them in .env or environment variables.")
 
 # Initialize client
-auth_manager = AuthManager(
+auth_manager = JwtAuthManager(
     base_url=SUPERSET_BASE_URL,
     username=SUPERSET_USERNAME,
     password=SUPERSET_PASSWORD,

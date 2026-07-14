@@ -1,12 +1,35 @@
-"""Authentication manager for Superset — JWT with CSRF and refresh."""
+"""Authentication strategies for Superset — JWT and session cookie."""
 
 import time
+from typing import Protocol
 
 import httpx
 
 
-class AuthManager:
-    """Manages authentication with Superset REST API.
+class AuthStrategy(Protocol):
+    """Common interface for Superset authentication schemes."""
+
+    auth_failure_hint: str | None
+
+    async def apply_auth(self, client: httpx.AsyncClient, headers: dict[str, str]) -> None:
+        """Inject auth (Authorization or Cookie) into request headers."""
+        ...
+
+    async def get_csrf_token(self, client: httpx.AsyncClient) -> str:
+        """Return a valid CSRF token, fetching one if necessary."""
+        ...
+
+    def invalidate(self) -> None:
+        """Reset cached auth state, forcing re-authentication."""
+        ...
+
+    def invalidate_csrf(self) -> None:
+        """Reset only the cached CSRF token."""
+        ...
+
+
+class JwtAuthManager:
+    """Manages JWT authentication with Superset REST API.
 
     Uses JWT authentication flow:
     - Login: POST /api/v1/security/login with refresh=true
@@ -32,6 +55,11 @@ class AuthManager:
         self._csrf_token: str | None = None
         self._token_expires_at: float = 0
 
+    @property
+    def auth_failure_hint(self) -> str | None:
+        """No special hint — a JWT can be re-obtained via login/refresh."""
+        return None
+
     async def get_token(self, client: httpx.AsyncClient) -> str:
         """Return a valid access_token, refreshing or re-logging in as needed.
 
@@ -54,6 +82,16 @@ class AuthManager:
         # Full login
         await self._login(client)
         return self._access_token
+
+    async def apply_auth(self, client: httpx.AsyncClient, headers: dict[str, str]) -> None:
+        """Set the Authorization header with a valid Bearer token.
+
+        Args:
+            client: httpx async client used for HTTP requests.
+            headers: Mutable header dict to inject the token into.
+        """
+        token = await self.get_token(client)
+        headers["Authorization"] = f"Bearer {token}"
 
     async def get_csrf_token(self, client: httpx.AsyncClient) -> str:
         """Return a valid CSRF token, fetching one if necessary.

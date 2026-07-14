@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from mcp_superset.auth import AuthManager
+from mcp_superset.auth import AuthStrategy
 
 
 class SupersetClient:
@@ -14,7 +14,7 @@ class SupersetClient:
     and provides convenient CRUD methods.
     """
 
-    def __init__(self, auth_manager: AuthManager, base_url: str):
+    def __init__(self, auth_manager: AuthStrategy, base_url: str):
         self.auth = auth_manager
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(
