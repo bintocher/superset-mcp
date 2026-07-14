@@ -242,3 +242,42 @@ class CookieAuthManager:
     def invalidate_csrf(self) -> None:
         """Reset only the cached CSRF token."""
         self._csrf_token = None
+
+
+def build_auth_strategy(
+    base_url: str,
+    session_cookie: str | None,
+    cookie_name: str,
+    username: str | None,
+    password: str | None,
+    provider: str,
+) -> AuthStrategy:
+    """Select and build the auth strategy from configuration.
+
+    Cookie mode is used when a session cookie is supplied; otherwise the
+    username/password JWT flow is used. Raises if neither is configured.
+
+    Args:
+        base_url: Superset instance URL.
+        session_cookie: Session cookie value, or None.
+        cookie_name: Cookie name (defaults handled by the caller).
+        username: Superset username, or None.
+        password: Superset password, or None.
+        provider: Auth provider for JWT login (e.g. "db", "ldap").
+
+    Returns:
+        A configured AuthStrategy.
+
+    Raises:
+        ValueError: If base_url is empty or no auth method is fully configured.
+    """
+    if not base_url:
+        raise ValueError("SUPERSET_BASE_URL is required. Set it in .env or environment variables.")
+    if session_cookie:
+        return CookieAuthManager(base_url, session_cookie, cookie_name)
+    if username and password:
+        return JwtAuthManager(base_url, username, password, provider)
+    raise ValueError(
+        "No authentication configured. Set SUPERSET_SESSION_COOKIE (SSO), "
+        "or both SUPERSET_USERNAME and SUPERSET_PASSWORD."
+    )
