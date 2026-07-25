@@ -64,13 +64,50 @@ class SupersetClient:
         """
         try:
             error_body = resp.json()
-            detail = error_body.get("message", "") or error_body.get("errors", str(error_body))
+            detail = error_body.get("message", "") or self._format_errors(error_body.get("errors")) or str(error_body)
         except Exception:
             detail = resp.text[:500]
         detail = str(detail)
         if resp.status_code == 401 and self.auth.auth_failure_hint:
             detail = " - ".join(p for p in (detail, self.auth.auth_failure_hint) if p)
         return detail
+
+    @staticmethod
+    def _format_errors(errors: Any) -> str:
+        """Flatten Superset's errors payload into a readable line.
+
+        Superset returns 500s as {"errors": [{"message": "Fatal error",
+        "error_type": ..., "extra": {"issue_codes": [{"code": N, ...}]}}]},
+        which is far more useful than the bare "Fatal error" once unpacked.
+
+        Args:
+            errors: The "errors" value from a Superset error response.
+
+        Returns:
+            A single-line summary, or "" when there is nothing to unpack.
+        """
+        if not errors:
+            return ""
+        if not isinstance(errors, list):
+            return str(errors)
+        parts = []
+        for item in errors:
+            if not isinstance(item, dict):
+                parts.append(str(item))
+                continue
+            text = str(item.get("message", "")).strip()
+            error_type = item.get("error_type")
+            if error_type:
+                text = f"{text} [{error_type}]" if text else f"[{error_type}]"
+            extra = item.get("extra") or {}
+            codes = extra.get("issue_codes") if isinstance(extra, dict) else None
+            if isinstance(codes, list):
+                messages = [str(c.get("message", "")).strip() for c in codes if isinstance(c, dict)]
+                messages = [m for m in messages if m]
+                if messages:
+                    text = f"{text} ({'; '.join(messages)})"
+            parts.append(text or str(item))
+        return " | ".join(p for p in parts if p)
 
     async def _request(
         self,

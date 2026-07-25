@@ -5,6 +5,7 @@ import json
 import re
 
 from mcp_superset.tools.helpers import auto_sync_chart_dashboards, parse_json_arg
+from mcp_superset.tools.types import IntList
 
 # Moment.js date format patterns that do NOT work in Superset 6.x.
 # Superset uses D3 strftime (%Y-%m-%d); moment.js (YYYY-MM-DD) renders as literal text.
@@ -353,7 +354,7 @@ def register_chart_tools(mcp):
         datasource_type: str = "table",
         params: str | None = None,
         query_context: str | None = None,
-        dashboards: list[int] | None = None,
+        dashboards: IntList | None = None,
     ) -> str:
         """Create a new chart.
 
@@ -503,7 +504,7 @@ def register_chart_tools(mcp):
         viz_type: str | None = None,
         params: str | None = None,
         query_context: str | None = None,
-        dashboards: list[int] | None = None,
+        dashboards: IntList | None = None,
         confirm_params_replace: bool = False,
     ) -> str:
         """Update an existing chart. Pass only the fields to change.
@@ -702,7 +703,7 @@ def register_chart_tools(mcp):
     async def superset_chart_copy(
         chart_id: int,
         slice_name: str,
-        dashboards: list[int] | None = None,
+        dashboards: IntList | None = None,
     ) -> str:
         """Create a copy of an existing chart with a new name.
 

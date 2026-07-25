@@ -1,6 +1,6 @@
 [project]
 name = "mcp-superset"
-version = "0.3.0"
+version = "0.3.1"
 description = "MCP server for managing Apache Superset — dashboards, charts, datasets, SQL Lab, access control, and more"
 readme = "README.md"
 license = "MIT"
