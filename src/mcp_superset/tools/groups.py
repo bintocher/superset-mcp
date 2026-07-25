@@ -2,6 +2,8 @@
 
 import json
 
+from mcp_superset.tools.types import IntList
+
 
 def register_group_tools(mcp):
     """Register all group management tools with the MCP server."""
@@ -54,8 +56,8 @@ def register_group_tools(mcp):
         name: str,
         label: str | None = None,
         description: str | None = None,
-        roles: list[int] | None = None,
-        users: list[int] | None = None,
+        roles: IntList | None = None,
+        users: IntList | None = None,
     ) -> str:
         """Create a new user group.
 
@@ -104,8 +106,8 @@ def register_group_tools(mcp):
         name: str | None = None,
         label: str | None = None,
         description: str | None = None,
-        roles: list[int] | None = None,
-        users: list[int] | None = None,
+        roles: IntList | None = None,
+        users: IntList | None = None,
         confirm_roles_replace: bool = False,
         confirm_users_replace: bool = False,
     ) -> str:
@@ -229,7 +231,7 @@ def register_group_tools(mcp):
     @mcp.tool
     async def superset_group_add_users(
         group_id: int,
-        user_ids: list[int],
+        user_ids: IntList,
     ) -> str:
         """Add users to a group without removing existing ones.
 
@@ -267,7 +269,7 @@ def register_group_tools(mcp):
     @mcp.tool
     async def superset_group_remove_users(
         group_id: int,
-        user_ids: list[int],
+        user_ids: IntList,
     ) -> str:
         """Remove users from a group without removing the rest.
 
@@ -302,7 +304,7 @@ def register_group_tools(mcp):
     @mcp.tool
     async def superset_group_add_roles(
         group_id: int,
-        role_ids: list[int],
+        role_ids: IntList,
     ) -> str:
         """Add roles to a group without removing existing ones.
 
@@ -337,7 +339,7 @@ def register_group_tools(mcp):
     @mcp.tool
     async def superset_group_remove_roles(
         group_id: int,
-        role_ids: list[int],
+        role_ids: IntList,
     ) -> str:
         """Remove roles from a group without removing the rest.
 

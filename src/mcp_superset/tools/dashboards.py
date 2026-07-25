@@ -5,6 +5,7 @@ import json
 import uuid
 
 from mcp_superset.tools.helpers import parse_json_arg
+from mcp_superset.tools.types import IntList, StrList
 
 KPI_VIZ_TYPES = {"big_number_total", "big_number"}
 MIN_KPI_HEIGHT = 16  # 2 grid cells (1 cell = 8 units)
@@ -291,7 +292,7 @@ def register_dashboard_tools(mcp):
         json_metadata: str | None = None,
         css: str | None = None,
         position_json: str | None = None,
-        roles: list[int] | None = None,
+        roles: IntList | None = None,
     ) -> str:
         """Create a new dashboard.
 
@@ -364,8 +365,8 @@ def register_dashboard_tools(mcp):
         json_metadata: str | dict | None = None,
         css: str | None = None,
         position_json: str | dict | None = None,
-        owners: list[int] | None = None,
-        roles: list[int] | None = None,
+        owners: IntList | None = None,
+        roles: IntList | None = None,
     ) -> str:
         """Update an existing dashboard. Pass only the fields to change.
 
@@ -658,7 +659,7 @@ def register_dashboard_tools(mcp):
     @mcp.tool
     async def superset_dashboard_embedded_set(
         dashboard_id: int,
-        allowed_domains: list[str] | None = None,
+        allowed_domains: StrList | None = None,
     ) -> str:
         """Enable dashboard embedding (embedded mode) and configure allowed domains.
 
@@ -708,7 +709,7 @@ def register_dashboard_tools(mcp):
         """
         dashboard = await client.get(f"/api/v1/dashboard/{dashboard_id}")
         result = dashboard.get("result", {})
-        metadata = json.loads(result.get("json_metadata", "{}"))
+        metadata = json.loads(result.get("json_metadata") or "{}")
         filters = metadata.get("native_filter_configuration", [])
         summary = []
         for f in filters:
@@ -764,8 +765,8 @@ def register_dashboard_tools(mcp):
         """
         dashboard = await client.get(f"/api/v1/dashboard/{dashboard_id}")
         result = dashboard.get("result", {})
-        metadata = json.loads(result.get("json_metadata", "{}"))
-        position = json.loads(result.get("position_json", "{}"))
+        metadata = json.loads(result.get("json_metadata") or "{}")
+        position = json.loads(result.get("position_json") or "{}")
 
         chart_ids = _extract_chart_ids(position)
         filter_id = f"NATIVE_FILTER-{uuid.uuid4()}"
@@ -854,7 +855,7 @@ def register_dashboard_tools(mcp):
         """
         dashboard = await client.get(f"/api/v1/dashboard/{dashboard_id}")
         result = dashboard.get("result", {})
-        metadata = json.loads(result.get("json_metadata", "{}"))
+        metadata = json.loads(result.get("json_metadata") or "{}")
         filters = metadata.get("native_filter_configuration", [])
 
         target = None
@@ -908,7 +909,7 @@ def register_dashboard_tools(mcp):
         """
         dashboard = await client.get(f"/api/v1/dashboard/{dashboard_id}")
         result = dashboard.get("result", {})
-        metadata = json.loads(result.get("json_metadata", "{}"))
+        metadata = json.loads(result.get("json_metadata") or "{}")
         filters = metadata.get("native_filter_configuration", [])
 
         target = None
@@ -982,7 +983,7 @@ def register_dashboard_tools(mcp):
             # Show current filters for an informed decision
             dashboard = await client.get(f"/api/v1/dashboard/{dashboard_id}")
             result = dashboard.get("result", {})
-            metadata = json.loads(result.get("json_metadata", "{}"))
+            metadata = json.loads(result.get("json_metadata") or "{}")
             current_filters = metadata.get("native_filter_configuration", [])
             current_names = [f.get("name", "?") for f in current_filters]
             return json.dumps(
@@ -998,8 +999,8 @@ def register_dashboard_tools(mcp):
 
         dashboard = await client.get(f"/api/v1/dashboard/{dashboard_id}")
         result = dashboard.get("result", {})
-        metadata = json.loads(result.get("json_metadata", "{}"))
-        position = json.loads(result.get("position_json", "{}"))
+        metadata = json.loads(result.get("json_metadata") or "{}")
+        position = json.loads(result.get("position_json") or "{}")
 
         chart_ids = _extract_chart_ids(position)
         filter_defs, err = parse_json_arg(filters_json, "filters_json")

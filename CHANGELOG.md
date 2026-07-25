@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-07-25
+
+### Fixed
+
+- **Native filter tools crashed on dashboards whose `json_metadata` is null** (#11). Superset returns `json_metadata: null` (not `"{}"`) for dashboards that have never had metadata written, so `superset_dashboard_filter_add/list/update/delete/reset` raised `TypeError: the JSON object must be str, bytes or bytearray, not NoneType` before making any API call. Null `json_metadata` and `position_json` are now read as empty objects everywhere.
+- **List arguments were unusable when the client sent them JSON-encoded** (#12). Some MCP clients serialise `dashboards=[31]` as the string `"[31]"`, which pydantic rejected with `list_type`, so `superset_chart_update(dashboards=...)` never ran. All list parameters (`dashboards`, `roles`, `owners`, `users`, `user_ids`, `role_ids`, `tables`, `permission_view_menu_ids`, `allowed_domains`) now accept a native list, a JSON-encoded list, a bare value, or a comma-separated string.
+
+### Changed
+
+- Superset error responses of the form `{"errors": [{"message": ..., "error_type": ..., "extra": {"issue_codes": [...]}}]}` are now unpacked into the raised error instead of being stringified, so a 500 carries the error type and issue codes rather than a bare "Fatal error".
+
 ## [0.3.0] - 2026-07-25
 
 ### Added

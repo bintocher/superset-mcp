@@ -3,6 +3,7 @@
 import json
 
 from mcp_superset.tools.helpers import find_datasource_permissions
+from mcp_superset.tools.types import IntList
 
 
 def register_security_tools(mcp):
@@ -79,7 +80,7 @@ def register_security_tools(mcp):
         username: str,
         email: str,
         password: str,
-        roles: list[int] | None = None,
+        roles: IntList | None = None,
         active: bool = True,
     ) -> str:
         """Create a new Superset user.
@@ -113,7 +114,7 @@ def register_security_tools(mcp):
         first_name: str | None = None,
         last_name: str | None = None,
         email: str | None = None,
-        roles: list[int] | None = None,
+        roles: IntList | None = None,
         active: bool | None = None,
         confirm_roles_replace: bool = False,
     ) -> str:
@@ -394,7 +395,7 @@ def register_security_tools(mcp):
     @mcp.tool
     async def superset_role_permission_add(
         role_id: int,
-        permission_view_menu_ids: list[int],
+        permission_view_menu_ids: IntList,
         confirm_full_replace: bool = False,
     ) -> str:
         """Set the permissions list for a role (FULL REPLACEMENT).
@@ -811,8 +812,8 @@ def register_security_tools(mcp):
     async def superset_rls_create(
         name: str,
         clause: str,
-        tables: list[int],
-        roles: list[int],
+        tables: IntList,
+        roles: IntList,
         filter_type: str = "Regular",
         group_key: str | None = None,
         description: str | None = None,
@@ -871,8 +872,8 @@ def register_security_tools(mcp):
         name: str | None = None,
         filter_type: str | None = None,
         clause: str | None = None,
-        tables: list[int] | None = None,
-        roles: list[int] | None = None,
+        tables: IntList | None = None,
+        roles: IntList | None = None,
         group_key: str | None = None,
         description: str | None = None,
     ) -> str:
@@ -976,7 +977,7 @@ def register_security_tools(mcp):
     @mcp.tool
     async def superset_bulk_user_role_add(
         role_id: int,
-        user_ids: list[int] | None = None,
+        user_ids: IntList | None = None,
         filter_role_id: int | None = None,
         exclude_admin: bool = True,
         confirm: bool = False,
@@ -1059,7 +1060,7 @@ def register_security_tools(mcp):
     @mcp.tool
     async def superset_bulk_user_role_remove(
         role_id: int,
-        user_ids: list[int] | None = None,
+        user_ids: IntList | None = None,
         exclude_admin: bool = True,
         confirm: bool = False,
     ) -> str:
