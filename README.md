@@ -109,6 +109,36 @@ SUPERSET_MCP_PORT=8001             # Server port (default: 8001)
 SUPERSET_MCP_TRANSPORT=streamable-http  # streamable-http (default), sse, or stdio
 ```
 
+#### Session-cookie authentication (SSO/OAuth)
+
+When Superset is behind SSO (OAuth/OIDC/SAML), password login via the REST
+API is unavailable. Instead, supply a browser **session cookie**:
+
+| Variable | Description |
+| --- | --- |
+| `SUPERSET_SESSION_COOKIE` | Session cookie value copied from your browser. When set, this mode is used instead of username/password. |
+| `SUPERSET_SESSION_COOKIE_NAME` | Cookie name. Defaults to `session`. |
+
+Copy the cookie from your browser's dev tools (Application → Cookies →
+your Superset domain → `session`). The MCP server sends it on every request
+and fetches CSRF tokens with it. The session cannot be renewed server-side,
+so when it expires you must paste a fresh value and restart the server.
+
+Two things worth checking before you use this mode:
+
+- **The cookie name is not always `session`.** Instances that set
+  `SESSION_COOKIE_NAME` in `superset_config.py` use a different name (`s`, for
+  example). Use the name shown in dev tools and set `SUPERSET_SESSION_COOKIE_NAME`
+  accordingly.
+- **The instance must accept session authentication on `/api/v1/`.** Where the
+  REST API is configured for JWT only, requests carrying a valid session cookie
+  still return `401 {"msg": "Missing Authorization Header"}` - refreshing the
+  cookie will not help, and JWT mode is the only option there.
+
+Treat the cookie as a credential: it grants full access to your Superset
+account for the lifetime of the session. Keep it in `.env` (which is
+gitignored), not in shell history or committed config.
+
 ### Running
 
 ```bash

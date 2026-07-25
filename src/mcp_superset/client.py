@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from mcp_superset.auth import AuthManager
+from mcp_superset.auth import AuthStrategy
 
 
 class SupersetClient:
@@ -14,7 +14,7 @@ class SupersetClient:
     and provides convenient CRUD methods.
     """
 
-    def __init__(self, auth_manager: AuthManager, base_url: str):
+    def __init__(self, auth_manager: AuthStrategy, base_url: str):
         self.auth = auth_manager
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(
@@ -23,7 +23,7 @@ class SupersetClient:
         )
 
     async def _get_headers(self, need_csrf: bool = False) -> dict[str, str]:
-        """Build request headers with a valid JWT and optionally a CSRF token.
+        """Build request headers with auth and optionally a CSRF token.
 
         Args:
             need_csrf: True for mutating requests (POST/PUT/DELETE).
@@ -31,17 +31,46 @@ class SupersetClient:
         Returns:
             Dictionary of HTTP headers.
         """
-        token = await self.auth.get_token(self._client)
         headers = {
-            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "Referer": self.base_url,
         }
-        if need_csrf:
-            csrf = await self.auth.get_csrf_token(self._client)
-            headers["X-CSRFToken"] = csrf
+        try:
+            await self.auth.apply_auth(self._client, headers)
+            if need_csrf:
+                csrf = await self.auth.get_csrf_token(self._client)
+                headers["X-CSRFToken"] = csrf
+        except httpx.HTTPStatusError as exc:
+            # Login/refresh/CSRF fetch failed - surface it as a SupersetAPIError
+            # (with the auth hint) instead of leaking a raw httpx exception.
+            raise SupersetAPIError(
+                status_code=exc.response.status_code,
+                detail=(
+                    f"Superset API authentication {exc.request.method} {exc.request.url.path}: "
+                    f"{exc.response.status_code} - {self._error_detail(exc.response)}"
+                ),
+            ) from exc
         return headers
+
+    def _error_detail(self, resp: httpx.Response) -> str:
+        """Extract a human-readable error detail, appending the auth hint on 401.
+
+        Args:
+            resp: The failed httpx response.
+
+        Returns:
+            Error detail string; the auth hint is appended for 401 responses.
+        """
+        try:
+            error_body = resp.json()
+            detail = error_body.get("message", "") or error_body.get("errors", str(error_body))
+        except Exception:
+            detail = resp.text[:500]
+        detail = str(detail)
+        if resp.status_code == 401 and self.auth.auth_failure_hint:
+            detail = " - ".join(p for p in (detail, self.auth.auth_failure_hint) if p)
+        return detail
 
     async def _request(
         self,
@@ -106,15 +135,9 @@ class SupersetClient:
             )
 
         if resp.status_code >= 400:
-            error_detail = ""
-            try:
-                error_body = resp.json()
-                error_detail = error_body.get("message", "") or error_body.get("errors", str(error_body))
-            except Exception:
-                error_detail = resp.text[:500]
             raise SupersetAPIError(
                 status_code=resp.status_code,
-                detail=f"Superset API {method} {endpoint}: {resp.status_code} — {error_detail}",
+                detail=f"Superset API {method} {endpoint}: {resp.status_code} - {self._error_detail(resp)}",
             )
 
         if resp.status_code == 204:
@@ -207,7 +230,7 @@ class SupersetClient:
         if resp.status_code >= 400:
             raise SupersetAPIError(
                 status_code=resp.status_code,
-                detail=f"Superset API GET {endpoint}: {resp.status_code} — {resp.text[:500]}",
+                detail=f"Superset API GET {endpoint}: {resp.status_code} - {self._error_detail(resp)}",
             )
         return resp.content
 
@@ -231,13 +254,9 @@ class SupersetClient:
             SupersetAPIError: If the API returns a 4xx/5xx status code.
         """
         url = f"{self.base_url}{endpoint}"
-        token = await self.auth.get_token(self._client)
-        csrf = await self.auth.get_csrf_token(self._client)
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "X-CSRFToken": csrf,
-            "Referer": self.base_url,
-        }
+        # httpx sets its own multipart Content-Type (with the boundary)
+        headers = await self._get_headers(need_csrf=True)
+        headers.pop("Content-Type", None)
         resp = await self._client.post(
             url=url,
             headers=headers,
@@ -246,10 +265,8 @@ class SupersetClient:
         )
         if resp.status_code == 401:
             self.auth.invalidate()
-            token = await self.auth.get_token(self._client)
-            csrf = await self.auth.get_csrf_token(self._client)
-            headers["Authorization"] = f"Bearer {token}"
-            headers["X-CSRFToken"] = csrf
+            headers = await self._get_headers(need_csrf=True)
+            headers.pop("Content-Type", None)
             resp = await self._client.post(
                 url=url,
                 headers=headers,
@@ -257,15 +274,9 @@ class SupersetClient:
                 data=data or {},
             )
         if resp.status_code >= 400:
-            error_detail = ""
-            try:
-                error_body = resp.json()
-                error_detail = error_body.get("message", "") or error_body.get("errors", str(error_body))
-            except Exception:
-                error_detail = resp.text[:500]
             raise SupersetAPIError(
                 status_code=resp.status_code,
-                detail=f"Superset API POST {endpoint}: {resp.status_code} — {error_detail}",
+                detail=f"Superset API POST {endpoint}: {resp.status_code} - {self._error_detail(resp)}",
             )
         if resp.status_code == 204:
             return {"status": "ok"}

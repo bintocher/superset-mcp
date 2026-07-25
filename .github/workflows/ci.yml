@@ -28,14 +28,17 @@ jobs:
         run: uv sync --extra dev
 
       - name: Lint with ruff
-        run: uv run ruff check src/
+        run: uv run ruff check src/ tests/
 
       - name: Check formatting with ruff
-        run: uv run ruff format --check src/
+        run: uv run ruff format --check src/ tests/
 
       - name: Type check with mypy
         run: uv run mypy src/mcp_superset/ --ignore-missing-imports
         continue-on-error: true
+
+      - name: Run tests
+        run: uv run pytest -q
 
   build:
     runs-on: ubuntu-latest

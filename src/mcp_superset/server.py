@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from mcp_superset import __version__
-from mcp_superset.auth import AuthManager
+from mcp_superset.auth import build_auth_strategy
 from mcp_superset.client import SupersetClient
 from mcp_superset.tools import register_all_tools
 
@@ -26,15 +26,14 @@ SUPERSET_BASE_URL = os.getenv("SUPERSET_BASE_URL", "")
 SUPERSET_USERNAME = os.getenv("SUPERSET_USERNAME")
 SUPERSET_PASSWORD = os.getenv("SUPERSET_PASSWORD")
 SUPERSET_AUTH_PROVIDER = os.getenv("SUPERSET_AUTH_PROVIDER", "db")
+SUPERSET_SESSION_COOKIE = os.getenv("SUPERSET_SESSION_COOKIE")
+SUPERSET_SESSION_COOKIE_NAME = os.getenv("SUPERSET_SESSION_COOKIE_NAME", "session")
 
-if not SUPERSET_BASE_URL:
-    raise ValueError("SUPERSET_BASE_URL is required. Set it in .env or environment variables.")
-if not SUPERSET_USERNAME or not SUPERSET_PASSWORD:
-    raise ValueError("SUPERSET_USERNAME and SUPERSET_PASSWORD are required. Set them in .env or environment variables.")
-
-# Initialize client
-auth_manager = AuthManager(
+# Initialize auth strategy (cookie mode if a session cookie is set, else JWT)
+auth_manager = build_auth_strategy(
     base_url=SUPERSET_BASE_URL,
+    session_cookie=SUPERSET_SESSION_COOKIE,
+    cookie_name=SUPERSET_SESSION_COOKIE_NAME,
     username=SUPERSET_USERNAME,
     password=SUPERSET_PASSWORD,
     provider=SUPERSET_AUTH_PROVIDER,
