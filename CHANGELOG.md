@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-25
+
+### Added
+
+- **Session-cookie authentication for SSO/OAuth instances.** Where Superset sits behind OAuth/OIDC/SAML, the REST login endpoint is unusable. Setting `SUPERSET_SESSION_COOKIE` (and `SUPERSET_SESSION_COOKIE_NAME` when the instance renames the cookie) makes the server send a browser session cookie on every request and fetch CSRF tokens with it. Cookie mode takes precedence over `SUPERSET_USERNAME`/`SUPERSET_PASSWORD`; a 401 in this mode says the cookie needs refreshing, since an expired SSO session cannot be renewed server-side.
+- Test suite (`pytest` + `respx`), covering both auth strategies, the client wiring and the 401 paths. CI now runs it.
+
+### Changed
+
+- Authentication is now an `AuthStrategy` protocol with two implementations (`JwtAuthManager`, `CookieAuthManager`) selected by `build_auth_strategy()`. `SupersetClient` no longer knows about bearer tokens. `AuthManager` was renamed to `JwtAuthManager`.
+
+### Fixed
+
+- **Authentication failures on mutating requests escaped as raw `httpx.HTTPStatusError`.** A rejected session or a failed login surfaced as an httpx exception from the CSRF/login call, bypassing `SupersetAPIError` and the "refresh your cookie" hint. All auth and CSRF failures are now wrapped consistently.
+- `post_form` built its headers by hand (a third copy of the auth/CSRF logic) and so missed the same error handling; it now shares `_get_headers`. Error-detail extraction is a single helper used by `_request`, `get_raw` and `post_form`.
+
 ## [0.2.8] - 2026-07-13
 
 ### Fixed
