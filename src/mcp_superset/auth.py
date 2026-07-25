@@ -9,7 +9,10 @@ import httpx
 class AuthStrategy(Protocol):
     """Common interface for Superset authentication schemes."""
 
-    auth_failure_hint: str | None
+    @property
+    def auth_failure_hint(self) -> str | None:
+        """Hint shown on a 401, or None when re-authentication is automatic."""
+        ...
 
     async def apply_auth(self, client: httpx.AsyncClient, headers: dict[str, str]) -> None:
         """Inject auth (Authorization or Cookie) into request headers."""
@@ -198,7 +201,7 @@ class CookieAuthManager:
     def __init__(self, base_url: str, cookie_value: str, cookie_name: str = "session"):
         self.base_url = base_url.rstrip("/")
         self.cookie_value = cookie_value
-        self.cookie_name = cookie_name
+        self.cookie_name = cookie_name or "session"
         self._csrf_token: str | None = None
 
     @property
